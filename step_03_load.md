@@ -1,9 +1,9 @@
 
+Now that we understand RAG and our trusty Firestore vector store, it's time to build the engine that populates our legal library!
 
-Enable the Cloud Storage API
-Cloud Run API: Ensure the Cloud Run API is enabled. Follow the same steps as for Cloud Functions API in the original guide, but search for and enable "Cloud Run API".
-Artifact Registry API or Container Registry API: You'll need to push your container image. Enable either:
-Artifact Registry API (Recommended, newer): Search for and enable "Artifact Registry API".
+So, how do we make legal documents 'searchable by meaning'? The magic is in embeddings! Think of embeddings as converting words, sentences, or even whole documents into numerical vectors – lists of numbers that capture their semantic meaning. Similar concepts get vectors that are 'close' to each other in vector space. We use powerful models (like those from Vertex AI) to perform this conversion. It's like creating a secret numerical code for each piece of legal text, allowing our system to understand and compare them based on what they mean, not just the words they use.
+
+And to automate our document loading, we'll use Cloud Run Functions and Eventarc. Cloud Run Function is a lightweight, serverless container that runs your code only when needed. We'll package our document processing Python script into a container and deploy it as a Cloud Run Function. But how does it know when to run? That's where Eventarc comes in! Eventarc lets us set up triggers that react to events happening in Google Cloud. We'll create an Eventarc trigger that 'listens' to our GCS bucket. Whenever a new legal document is uploaded to the bucket, Eventarc will automatically wake up our Cloud Run Function and tell it to start processing that new file – completely hands-free document indexing!
 
 
 ### Step 1:  Setting up Google Cloud Storage (GCS) Bucket
@@ -34,7 +34,9 @@ Cloud Shell will open in a pane at the bottom of your browser window. It might t
 
 2. Navigate to the working directory **legal-eagle-loader**: By default, Cloud Shell starts in your home directory (/home/your-username). Use cd command in the Cloud Shell terminal create the file.
 ```
-cd legal-eagle-loader
+cd legal-eagle
+mkdir loader
+cd loader
 ```
 
 3. Create `main.py`,`requirements.txt`, and `Dockerfile` files. In the Cloud Shell terminal, use the touch command to create the files:
@@ -42,12 +44,7 @@ cd legal-eagle-loader
 touch main.py requirements.txt Dockerfile
 ```
 
-4. Open the Cloud Shell Code Editor. In the Cloud Shell toolbar (the top of the Cloud Shell pane), click on the "Open Editor" button (it looks like an open folder with a pencil).
-This will open the Cloud Shell Code Editor in a new browser tab or window. You'll see a file explorer on the left side. 
-
-5. Enable Gemini Code Assist in Cloud Shell IDE
-    - Click on the **Cloud Code, sign i**n** button in the bottom status bar as shown. Authorize the plugin as instructed. If you see **Cloud Code - no project** in the status bar, select that and then select the specific Google Cloud Project from the list of projects that you plan to work with.
-    - Click on the Code Assist button in the bottom right corner as shown and select one last time the correct Google Cloud project. If you are asked to enable the Cloud AI Companion API, please do so and move forward. Once you've selected your Google Cloud project, ensure that you are able to see that in the Cloud Code status message in the status bar and that you also have Code Assist enabled on the right, in the status bar as shown below:
+4. Open the Cloud Shell Code Editor. You'll see the newly created folder called `*loader` and the three files. 
 
 6. Edit `main.py`. In the file explorer on the left, navigate to the directory where you created the files and double-click on main.py to open it in the editor.
 Paste the following Python code into `main.py`:
@@ -55,8 +52,21 @@ Paste the following Python code into `main.py`:
 ```
 from google.cloud import storage
 import functions_framework
+from google.cloud import firestore
+from vertexai.language_models import TextEmbeddingModel
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import vertexai
 
-@functions_framework.cloud_event
+# Initialize Vertex AI and Embedding Model (adjust project and location if needed)
+PROJECT_ID = "<YOUR_PROJECT_ID>" # Replace with your GCP Project ID
+LOCATION = "us-central1"       # Or the location where Vertex AI embeddings are available
+vertexai.init(project=PROJECT_ID, location=LOCATION)
+embedding_model = TextEmbeddingModel.from_pretrained("textembedding-gecko@001") # Or your preferred model
+
+# Initialize Firestore client
+db = firestore.Client()
+collection_ref = db.collection("legal_documents") # Replace with your collection name if different
+
 def process_file(cloud_event):
     """Triggered by a Cloud Storage event.
        Args:
@@ -66,7 +76,7 @@ def process_file(cloud_event):
     bucket_name = cloud_event.data['bucket']
     file_name = cloud_event.data['name']
 
-    print(f"CloudEvent received: {cloud_event}") # Log the entire CloudEvent for inspection
+    print(f"CloudEvent received: {cloud_event}")
     print(f"New file detected in bucket: {bucket_name}, file: {file_name}")
 
     storage_client = storage.Client()
@@ -74,14 +84,45 @@ def process_file(cloud_event):
     blob = bucket.blob(file_name)
 
     try:
-        # Download the file content as bytes
-        file_content_bytes = blob.download_as_bytes()
-        file_content_string = file_content_bytes.decode('utf-8') # Assuming text file, decode to string
+        # Download the file content as string (assuming UTF-8 encoded text file)
+        file_content_string = blob.download_as_string().decode("utf-8")
 
-        print(f"File content:")
-        print("---------------------")
-        print(file_content_string)
-        print("---------------------")
+        print(f"File content downloaded. Processing...")
+
+        # Split text into chunks using RecursiveCharacterTextSplitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=100,
+            length_function=len,
+        )
+        text_chunks = text_splitter.split_text(file_content_string)
+
+        print(f"Text split into {len(text_chunks)} chunks.")
+
+        # Generate embeddings for each text chunk
+        embeddings = embedding_model.get_embeddings(text_chunks)
+        embedding_vectors = [embedding.values.tolist() for embedding in embeddings] # Convert to list of lists
+
+        print(f"Embeddings generated for {len(embedding_vectors)} chunks.")
+
+        # Prepare Firestore document data
+        for i, chunk in enumerate(text_chunks):
+            doc_id = f"{file_name}_chunk_{i+1}" # Create a unique document ID for each chunk
+            doc_data = {
+                "file": file_name,
+                "original_text_chunk": chunk,
+                "embedding_vector": embedding_vectors[i],
+                "chunk_number": i + 1, # Optional: chunk number for ordering
+                "total_chunks": len(text_chunks) # Optional: total chunks for the file
+            }
+
+            # Upsert document to Firestore (create or update if doc_id exists)
+            doc_ref = collection_ref.document(doc_id)
+            doc_ref.set(doc_data)
+            print(f"Document '{doc_id}' upserted to Firestore.")
+
+        print(f"File processing and Firestore upsert complete for file: {file_name}")
+
 
     except Exception as e:
         print(f"Error processing file {file_name}: {e}")
@@ -90,6 +131,9 @@ def process_file(cloud_event):
 ```
 google-cloud-storage
 functions-framework
+google-cloud-vertexai
+google-cloud-firestore
+langchain
 ```
 
 8. Edit Dockerfile. In the file explorer, double-click on Dockerfile. Ask Gemini to generate the dockerfile for you
@@ -136,14 +180,14 @@ To trigger your Cloud Run service when files are uploaded to your GCS bucket, we
     - Path: Leave this blank for now .
 Click **CREATE**. Eventarc will now set up the trigger.
 
+## Grant permission to the loader service:
+Your Cloud Run service needs permission to read files from various components. We need to grant the service's service account the "Storage Object Viewer" role on your bucket.
 
-Your Cloud Run service needs permission to read files from your GCS bucket. We need to grant the service's service account the "Storage Object Viewer" role on your bucket.
+1. Get the Cloud Run Service Account Email Address: As you did in the console instructions, you first need to get the service account email address associated with your Cloud Run service. Go to "Cloud Run" in the Google Cloud Console.
+2. Click on your Cloud Run service name and go to the "Permissions" tab.
+3. Copy the email address of the service account listed there. It will likely be in the format your-project-id-run@developer.gserviceaccount.com or similar. Let's say you copy this email and it is <CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>.
 
-5. Get the Cloud Run Service Account Email Address: As you did in the console instructions, you first need to get the service account email address associated with your Cloud Run service. Go to "Cloud Run" in the Google Cloud Console.
-6. Click on your Cloud Run service name and go to the "Permissions" tab.
-7. Copy the email address of the service account listed there. It will likely be in the format your-project-id-run@developer.gserviceaccount.com or similar. Let's say you copy this email and it is <CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>.
-Get your GCS Bucket Name: You need to know the name of your GCS bucket where you want to grant the permission. Let's assume your bucket name is <YOUR_GCS_BUCKET_NAME>.
-
+4. Grant "GCS Bucket Viewer" Role:
 Run the gcloud iam policy add-binding command: Open your terminal or Cloud Shell and execute the following gcloud command:
 
 ```
@@ -156,11 +200,25 @@ Replace the placeholders:
 <YOUR_GCS_BUCKET_NAME>: Replace this with the actual name of your GCS bucket (e.g., my-project-file-upload-bucket).
 <CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>: Replace this with the service account email address you copied in Step 1.
 
-8. You can verify that the role has been granted using the `gcloud iam policy` get command:
+
+5.  Grant "Vertex AI User" Role using gcloud:
 ```
+gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
+    --member="serviceAccount:<CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>" \
+    --role="roles/aiplatform.user"
+```
+
+6. Grant "Firestore User" Role
+
+```
+gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
+    --member="serviceAccount:<CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>" \
+    --role="roles/datastore.user"
+```
+
+7. Verify TODO, use a script to print the section needed.
+
 gcloud storage buckets iam-policy get gs://<YOUR_GCS_BUCKET_NAME>
-```
-This command will output the IAM policy for your bucket in JSON or YAML format. Look for the "bindings" section and verify that you see an entry similar to this (within the bindings array):
 
 ```
 - members:
@@ -168,3 +226,42 @@ This command will output the IAM policy for your bucket in JSON or YAML format. 
   role: roles/storage.objectViewer
 ```
 
+gcloud projects get-iam-policy <YOUR_PROJECT_ID>
+
+```
+- members:
+  - serviceAccount:<CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>
+  role: roles/aiplatform.user
+  - serviceAccount:<CLOUD_RUN_SERVICE_ACCOUNT_EMAIL>
+  role: roles/datastore.user
+```
+
+### Test by Uploading a New File in GCS bucket
+
+1. Upload the court case file to your GCS bucket.
+
+```
+gcloud storage cp court_case.md gs://<YOUR_GCS_BUCKET_NAME>/court_case.md
+```
+
+
+2. Monitor Cloud Run Service Logs, go to "Cloud Run" -> your service `legal-eagle-loader` -> "Logs". And check the logs for successful processing messages, including:
+```
+    "CloudEvent received:"
+    "New file detected in bucket:"
+    "File content downloaded. Processing..."
+    "Text split into ... chunks."
+    "Embeddings generated for ... chunks."
+    "Document '...chunk...' upserted to Firestore."
+    "File processing and Firestore upsert complete..."
+```
+Look for any error messages in the logs and troubleshoot if necessary.
+
+3. Verify Data in Firestore. Go to "Databases" -> "Firestore" -> "Data" in the Cloud Console and open your legal_documents collection.
+You should see new documents created in your collection. Each document will represent a chunk of the text from the file you uploaded and will contain:
+```
+file: The filename.
+original_text_chunk: The text chunk content.
+embedding_vector: A list of floating-point numbers (the Vertex AI embedding).
+chunk_number, total_chunks.
+```
