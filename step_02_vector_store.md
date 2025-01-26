@@ -19,20 +19,20 @@ Click **Create Database**. Firestore will provision your database, which might t
     - Collection ID: Enter a name for your collection. For example, legal_documents. Click "Next".
     - Document ID: You can leave this as "Autogenerate ID" for now.
 
-    Field 1:
-        Field name: file
-        Data type: String
-        Value: (You can put a sample filename for now, e.g., case_one.md).
-        Click "Add field".
-    Field 2:
-        Field name: original_text
-        Data type: String
-        Value: (Paste a short snippet of example legal text here, for instance: "This contract outlines the terms and conditions..." ).
-        Click "Add field".
-    Field 3: embedding_vector (for vector embeddings)
-        Field name: embedding_vector
-        Data type: Array
-        Value: We need to create a placeholder embedding vector. For demonstration, let's use a small example array of floats. In a real scenario, you would generate this embedding using a model.
+    - Field 1:
+        - Field name: file
+        - Data type: String
+        - Value: (You can put a sample filename for now, e.g., case_one.md).
+    Click "Add field".
+    - Field 2:
+        - Field name: original_text
+        - Data type: String
+        - Value: XXXXdfjksdjflsdkfjsdl.
+     Click "Add field".
+    - Field 3: embedding_vector (for vector embeddings)
+        - Field name: embedding_vector
+        - Data type: Array
+        - Value: [0.1,3.0,6.6]
     Click "Save".
     You have now created a collection legal_documents and inserted a document with sample data, including a placeholder embedding_vector.
 
@@ -43,13 +43,13 @@ Click **Create Database**. Firestore will provision your database, which might t
         Index name: Give your index a name, e.g., legal_doc_embedding_index.
         Collection ID: Select your collection, legal_documents.
     -Fields to index:
-        Field path: Select embedding_vector.
-        Index type: "Vector".
-        Dimensions: 768. For our workshop, the dimension is 768 with different embedding model, you will need to set this to the correct dimension of your model's output (e.g., 768, 1536).
-        Distance metric: Choose a distance metric for vector similarity search. Common choices are:
-            COSINE_SIMILARITY: Often used for text embeddings. Measures cosine similarity.
-            EUCLIDEAN_DISTANCE: Measures Euclidean distance.
-            DOT_PRODUCT: Dot product. Choose COSINE_SIMILARITY for text-based embeddings as a good default.
+        - Field path: Select embedding_vector.
+        - Index type: "Vector".
+        - Dimensions: 768. For our workshop, the dimension is 768 with different embedding model, you will need to set this to the correct dimension of your model's output (e.g., 768, 1536).
+        - Distance metric: **COSINE_SIMILARITY** as the distance metric for vector similarity search. Here are some common choices:
+            - COSINE_SIMILARITY: Often used for text embeddings. Measures cosine similarity.
+            - EUCLIDEAN_DISTANCE: Measures Euclidean distance.
+            - DOT_PRODUCT: Dot product. Choose COSINE_SIMILARITY for text-based embeddings as a good default.
 
     Click "Create".
     Firestore will start creating the vector index. Index creation can take some time, especially for larger datasets. You'll see the index in a "Creating" state, and it will transition to "Ready" when it's built.
