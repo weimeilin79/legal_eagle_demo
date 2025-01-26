@@ -16,11 +16,11 @@ create a new project, click on the project dropdown and then **NEW PROJECT**. Fo
 3. Click on "Buckets" in the left-hand menu.
 4. Click on the "+ CREATE" button at the top.
 5. Configure your bucket (Important settings):
-    **bucket name**: Choose a globally unique name for your bucket. Bucket names must be globally unique across all of Google Cloud Storage. Use lowercase letters, numbers, dashes (-), underscores (_), and dots (.). A good practice is to include your project ID or a part of it in the bucket name to ensure uniqueness. For example, my-project-file-upload-bucket.
-    **region**: Select the `us-central1` region.
-    **Storage class**: "Standard". Standard is suitable for frequently accessed data.
-    **Access control**: Leave the default "Uniform access control" selected. This provides consistent, bucket-level access control.
-    **Advanced options**: For this tutorial, the default settings are usually sufficient.
+    - **bucket name**: Choose a globally unique name for your bucket. Bucket names must be globally unique across all of Google Cloud Storage. Use lowercase letters, numbers, dashes (-), underscores (_), and dots (.). A good practice is to include your project ID or a part of it in the bucket name to ensure uniqueness. For example, my-project-file-upload-bucket.
+    - **region**: Select the `us-central1` region.
+    - **Storage class**: "Standard". Standard is suitable for frequently accessed data.
+    - **Access control**: Leave the default "Uniform access control" selected. This provides consistent, bucket-level access control.
+    - **Advanced options**: For this tutorial, the default settings are usually sufficient.
 6. Click the **CREATE** button to create your bucket.
 
 You will now see your newly created bucket in the Buckets list. Note down your bucket name; you'll need it later.
