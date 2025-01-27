@@ -1,6 +1,6 @@
 ---
-description:
-id: metalab
+description: This workshop guides you through building a legal assistant using Google Cloud AI tools, emphasizing how to process, understand, and search unstructure data. You'll learn to use a Retrieval-Augmented Generation (RAG) approach to provide more accurate, informed responses based on actual legal information. The system uses Google Cloud Storage (GCS),Firestore and Cloud Run. The application is powered by a Gemini Large Language Model which interacts with the user through a web application UI, using the langchain library. Additionally, the workshop covers setting up Eventarc triggers for automated document processing in realtime.
+id: legaleagle
 keywords: docType:Codelab
 feedback link:
 analytics_account:
@@ -17,16 +17,30 @@ robots: noindex
 # Legal Eagles in the Cloud: Hacking the Court System (Legally) with Google
 
 The best part of *Breaking Bad* is the lawyer—and yes, I did binge-watch all seven seasons of *Better Call Saul*. Since then, I've imagined deftly navigating the complexities of the courtroom and delivering dramatic closing arguments. While my legal career may have taken a different turn, I'm excited to say that, with the help of AI, we might all be closer to that courtroom dream.
+
+![Better Call Eagle](images/app.gif)
+
 Today, we’re diving into how to use Google’s powerful AI tools—like Vertex AI, Firestore, and Cloud Run functions—to process and understand legal data, perform lightning-fast searches, and maybe, just maybe, help your imaginary client (or yourself) out of a sticky situation.
+
+
 You might not be cross-examining a witness, but with our system, you’ll be able to sift through mountains of information, generate clear summaries, and present the most relevant data in seconds.
+
 
 
 ## Architecture
 This project focuses on building a legal assistant using Google Cloud AI tools, emphasizing how to process, understand, and search legal data. The system is designed to sift through large amounts of information, generate summaries, and present relevant data quickly.
+
+
 The architecture of the legal assistant involves several key components:
-• **Data Storage**: Google Cloud Storage (GCS) is used to store legal documents. Firestore, a NoSQL database, functions as a vector store, holding document chunks and their corresponding embeddings. Vector Search is enabled in Firestore to allow for similarity searches.
-• **Data Processing**: When a new legal document is uploaded to GCS, Eventarc triggers a Cloud Run function. This function processes the document by splitting it into chunks and generating embeddings for each chunk using Vertex AI's text embedding model. These embeddings are then stored in Firestore alongside the text chunks.
+
+• **Building Knowlegebase from unstructure data**: Google Cloud Storage (GCS) is used to store legal documents. Firestore, a NoSQL database, functions as a vector store, holding document chunks and their corresponding embeddings. Vector Search is enabled in Firestore to allow for similarity searches.  When a new legal document is uploaded to GCS, Eventarc triggers a Cloud Run function. This function processes the document by splitting it into chunks and generating embeddings for each chunk using Vertex AI's text embedding model. These embeddings are then stored in Firestore alongside the text chunks.
+
+![Data Process](images/architecture-data-process.gif)
+
 • **Application powered by LLM & RAG** : The core of the question-answering system is the ask_llm function which uses the langchain library to interact with a Vertex AI Gemini Large Language Model. It creates a HumanMessage from the user's query, and includes a SystemMessage that instructs the LLM to act as a helpful legal assistant. The system uses a Retrieval-Augmented Generation (RAG) approach, where, before answering a query, the system uses the search_resource function to retrieve relevant context from the Firestore vector store. This context is then included in the SystemMessage to ground the LLM's answer in the provided legal information.
+
+![inference](images/architecture-inference.gif)
+
 
 The project aims to move away from LLMs' "creative interpretations" by using RAG, which first retrieves relevant information from a trusted legal source before generating an answer. This results in more accurate, informed responses based on actual legal information. 
 
