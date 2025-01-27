@@ -1,9 +1,13 @@
-Next Show how to implement RAG using RetrievalQA 
-TODO: make an interesting intro
+1. The legal.py file needs to be updated to include the RAG implementation. 
 
-1. Open legal.py: In your Cloud Shell Editor, open main.py.
-
-Example legal.py (Illustrative - Adapt to your existing legal.py):
+    - Import `FirestoreVectorStore` and other required modules from langchain and vertexai.
+    - Initialize the Vertex AI and the embedding model.You'll be using `text-embedding-004`.
+    - Create a FirestoreVectorStore pointing to the legal_documents collection, using the initialized embedding model and specifying the content and embedding fields.
+        - The content field is 1original_text1 
+        - embedding field is 1embedding1.
+    - Define a function called `search_resource` that takes a query, performs a similarity search using vector_store.similarity_search, and returns the combined results.
+    - Modifying ask_llm function and use the `search_resource` function to retrieve relevant context based on the user's query.     
+        - The retrieved context is then included in the SystemMessage within the ChatPromptTemplate.
 
 ```
 import os
@@ -82,5 +86,35 @@ def ask_llm(query):
 
 ```
 
+To deploy the web application to Cloud Run, follow these step-by-step instructions, based on the provided sources:
+
+1: Containerize the Application
+Create a `Dockerfile` in `webapp` project directory that specifies how to build a Docker image, run the following line to create the file.
+```
+```
+
+2: Build, tag and push the Docker image to the Artifact Registry:
+```
+docker build -t gcr.io/<YOUR_PROJECT_ID>/legal-eagle-webapp .
+docker tag gcr.io/<YOUR_PROJECT_ID>/legal-eagle-webapp us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp
+docker push us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp
+```
+
+3. Navigate to "Cloud Run" in the Google Cloud Console, Click on **CREATE SERVICE** and configure the Cloud Run service
+    - Container image: Select "us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp".
+    - Service name: `legal-eagle-webapp`
+    - Region: `us-central1`
+    - Authentication: For workshop purposes, allow "Allow unauthenticated invocations" but for production, you'll want to restrict access.
+    - Other Settings: Leave the default settings for "Container, Networking, Security".
+Click CREATE to deploy the service
+
+4.  Grant permissions to the service account
+
+
+
 Now we're going to have it anaylsis the court case for us. we're going to add another textarea as input to let us put in case related info. Change the index.html. css. and main.js in webapp and the legalrag.py
+
+1. Add another textarea in index.html
+2. Update webapp/main.js and webapp/legal.js
+Try and use Code Assist to help you. 
 
