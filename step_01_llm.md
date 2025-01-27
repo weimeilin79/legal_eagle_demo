@@ -6,6 +6,17 @@ Today, we’re diving into how to use Google’s powerful AI tools—like Vertex
 
 You might not be cross-examining a witness, but with our system, you’ll be able to sift through mountains of information, generate clear summaries, and present the most relevant data in seconds.
 
+# Architecture
+This project focuses on building a legal assistant using Google Cloud AI tools, emphasizing how to process, understand, and search legal data. The system is designed to sift through large amounts of information, generate summaries, and present relevant data quickly.
+The architecture of the legal assistant involves several key components:
+• **Data Storage**: Google Cloud Storage (GCS) is used to store legal documents. Firestore, a NoSQL database, functions as a vector store, holding document chunks and their corresponding embeddings. Vector Search is enabled in Firestore to allow for similarity searches.
+• **Data Processing**: When a new legal document is uploaded to GCS, Eventarc triggers a Cloud Run function. This function processes the document by splitting it into chunks and generating embeddings for each chunk using Vertex AI's text embedding model. These embeddings are then stored in Firestore alongside the text chunks.
+• **Application powered by LLM & RAG** : The core of the question-answering system is the ask_llm function which uses the langchain library to interact with a Vertex AI Gemini Large Language Model. It creates a HumanMessage from the user's query, and includes a SystemMessage that instructs the LLM to act as a helpful legal assistant. The system uses a Retrieval-Augmented Generation (RAG) approach, where, before answering a query, the system uses the search_resource function to retrieve relevant context from the Firestore vector store. This context is then included in the SystemMessage to ground the LLM's answer in the provided legal information.
+
+The project aims to move away from LLMs' "creative interpretations" by using RAG, which first retrieves relevant information from a trusted legal source before generating an answer. This results in more accurate, informed responses based on actual legal information. 
+
+The system is built using various Google Cloud services, such as Google Cloud Shell, Vertex AI, Firestore, Cloud Run, and Eventarc
+
 ### Create a project
 
 1.  In the Google Cloud Console, on the project selector page, select or create a Google Cloud project.
@@ -28,8 +39,12 @@ Run the following command to enable the necessary Google Cloud APIs:
 gcloud services enable storage.googleapis.com  \
                         run.googleapis.com  \
                         artifactregistry.googleapis.com  \
-                        aiplatform.googleapis.com  \
+                        aiplatform.googleapis.com \
                         eventarc.googleapis.com
+```
+
+```bash
+gcloud config set billing/quota_project YOUR_PROJECT
 ```
 ### Generate code with help from Google Cloud Assist
 
