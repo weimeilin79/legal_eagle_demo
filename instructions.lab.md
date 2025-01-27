@@ -637,21 +637,32 @@ def ask_llm(query):
 
 ```
 
-To deploy the web application to Cloud Run, follow these step-by-step instructions, based on the provided sources:
+6. After implementing RAG in legal.py, you should test it locally before deploying. 1. Installs the necessary Python libraries for the Cloud Run function
+```
+pip install -r requirements.txt
+```
 
-6: Containerize the Application
+7. Run the application with the command 
+```
+python3 main.py
+```
+8. Use webpreview to access the application, 
+
+9. To deploy the web application to Cloud Run, follow these step-by-step instructions, based on the provided sources:
+
+10. Containerize the Application
 Create a `Dockerfile` in `webapp` project directory that specifies how to build a Docker image, run the following line to create the file.
 ```
 ```
 
-7: Build, tag and push the Docker image to the Artifact Registry:
+11. Build, tag and push the Docker image to the Artifact Registry:
 ```
 docker build -t gcr.io/<YOUR_PROJECT_ID>/legal-eagle-webapp .
 docker tag gcr.io/<YOUR_PROJECT_ID>/legal-eagle-webapp us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp
 docker push us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp
 ```
 
-8. Navigate to "Cloud Run" in the Google Cloud Console, Click on **CREATE SERVICE** and configure the Cloud Run service
+12. Navigate to "Cloud Run" in the Google Cloud Console, Click on **CREATE SERVICE** and configure the Cloud Run service
     - Container image: Select "us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eagle-webapp".
     - Service name: `legal-eagle-webapp`
     - Region: `us-central1`
@@ -659,17 +670,19 @@ docker push us-central1-docker.pkg.dev/<YOUR_PROJECT_ID>/my-repository/legal-eag
     - Other Settings: Leave the default settings for "Container, Networking, Security".
 Click CREATE to deploy the service
 
-9.  Grant permissions to the service account
-
-
-
-Now we're going to have it anaylsis the court case for us. we're going to add another textarea as input to let us put in case related info. Change the index.html. css. and main.js in webapp and the legalrag.py
-
-1. Add another textarea in index.html
-2. Update webapp/main.js and webapp/legal.js
-Try and use Code Assist to help you. 
+13.  You'll need to grant the necessary permissions to the service account to access the Firestore database and the Vertex AI model.
+14. Get Cloud Run Service Account Email: Obtain the service account email from the "Permissions" tab of your Cloud Run service.
+15. Use the following gcloud command to grant the service account the "Vertex AI User" role:
+```
+```
+16. Use the following gcloud command to grant the service account the "Firestore User" role:
+```
+```
 
 ## Challenge 
 
-1. How can we extend the system to ingest and process diverse media types such as court videos and audio recordings, and extract relevant text to include in the vector store and use in the RAG pipeline? This should include considering how to effectively manage and utilize the non-textual aspects of these resources.
-2. Can you ask the assistant to process online assets like web pages live?
+1. **Diverse Media Types:** 
+How to ingest and process diverse media types such as court videos and audio recordings, and extract relevant text.
+
+
+2. **Online Assets**: How to process online assets like web pages live.
